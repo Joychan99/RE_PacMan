@@ -63,6 +63,7 @@ public class GameManager : MonoBehaviour
     private int pacSpawnRow, pacSpawnCol;
     private readonly List<Ghost> ghosts = new List<Ghost>();
     private readonly List<Vector2Int> ghostSpawns = new List<Vector2Int>();
+    private float spawnProtectionTimer;
 
     // 스프라이트(코드 생성)
     private Sprite squareSprite, circleSprite, pacmanSprite, ghostSprite;
@@ -191,6 +192,7 @@ public class GameManager : MonoBehaviour
         Frightened = false;
         GhostScatter = false;
         frightenedTimer = 0f;
+        spawnProtectionTimer = 1.2f;
 
         ghosts.Clear();
         ghostSpawns.Clear();
@@ -356,6 +358,9 @@ public class GameManager : MonoBehaviour
             GhostScatter = false;
         }
 
+        if (spawnProtectionTimer > 0f)
+            spawnProtectionTimer -= Time.deltaTime;
+
         // 파워먹이 깜빡임
         float s = 0.5f + Mathf.Sin(Time.time * 6f) * 0.12f;
         foreach (var p in powerPellets)
@@ -388,6 +393,7 @@ public class GameManager : MonoBehaviour
 
     void CheckCollisions()
     {
+        if (spawnProtectionTimer > 0f) return;
         if (pacman == null) return;
         foreach (var g in ghosts)
         {
@@ -411,6 +417,7 @@ public class GameManager : MonoBehaviour
         foreach (var g in ghosts) g.ResetToHome();
         Frightened = false;
         GhostScatter = false;
+        spawnProtectionTimer = 1.2f;
     }
 
     // ---------- 간단한 화면 UI ----------
