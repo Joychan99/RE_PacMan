@@ -5,6 +5,14 @@ using UnityEngine;
 // 각 분기점에서 목표 타일에 가장 가까워지는 방향을 고른다(역주행은 원칙적으로 금지).
 public class Ghost : GridMover
 {
+    private static readonly Vector2[] Directions =
+    {
+        Vector2.up,
+        Vector2.down,
+        Vector2.left,
+        Vector2.right
+    };
+
     public Color baseColor = Color.red;
     public int aheadOffset = 0;        // 팩맨 진행방향 앞쪽 몇 칸을 노릴지 (성격 차이)
     public Vector2Int scatterCorner;   // 흩어짐 모드에서 향하는 구석 (row, col)
@@ -46,21 +54,31 @@ public class Ghost : GridMover
     {
         UpdateAppearance();
 
+        if (eaten)
+        {
+            nextDirection = FindStepToward(homeRow, homeCol);
+            speed = 7f;
+            if (nextDirection != Vector2.zero) return;
+        }
+
         // 현재 칸에서 갈 수 있는 방향들(역주행 제외)
-        Vector2[] dirs = { Vector2.up, Vector2.down, Vector2.left, Vector2.right };
-        List<Vector2> options = new List<Vector2>();
-        foreach (var d in dirs)
-            if (CanMove(d) && d != -Direction) options.Add(d);
+        Vector2[] options = new Vector2[4];
+        int optionCount = 0;
+        foreach (var d in Directions)
+        {
+            if (CanMove(d) && d != -Direction)
+                options[optionCount++] = d;
+        }
 
         // 막다른 길이면 역주행 허용
-        if (options.Count == 0 && Direction != Vector2.zero && CanMove(-Direction))
-            options.Add(-Direction);
-        if (options.Count == 0) { nextDirection = Vector2.zero; return; }
+        if (optionCount == 0 && Direction != Vector2.zero && CanMove(-Direction))
+            options[optionCount++] = -Direction;
+        if (optionCount == 0) { nextDirection = Vector2.zero; return; }
 
         // 겁먹음(아직 안 먹힌 상태)이면 무작위 이동
         if (gm.Frightened && !eaten)
         {
-            nextDirection = options[Random.Range(0, options.Count)];
+            nextDirection = options[Random.Range(0, optionCount)];
             return;
         }
 
@@ -71,8 +89,9 @@ public class Ghost : GridMover
         // 목표에 가장 가까워지는 방향 선택
         float best = float.MaxValue;
         Vector2 chosen = options[0];
-        foreach (var d in options)
+        for (int i = 0; i < optionCount; i++)
         {
+            Vector2 d = options[i];
             int nCol = Col + Mathf.RoundToInt(d.x);
             int nRow = Row - Mathf.RoundToInt(d.y);
             float dist = (nRow - tRow) * (nRow - tRow) + (nCol - tCol) * (nCol - tCol);
@@ -82,6 +101,68 @@ public class Ghost : GridMover
 
         // 속도: 먹힘 > 평소 > 겁먹음
         speed = eaten ? 7f : (gm.Frightened ? 3f : 4.2f);
+    }
+
+    private Vector2 FindStepToward(int targetRow, int targetCol)
+    {
+        if (Row == targetRow && Col == targetCol) return Vector2.zero;
+
+        int rows = gm.Rows;
+        int cols = gm.Cols;
+        bool[,] visited = new bool[rows, cols];
+        int[,] prevRow = new int[rows, cols];
+        int[,] prevCol = new int[rows, cols];
+
+        for (int r = 0; r < rows; r++)
+            for (int c = 0; c < cols; c++)
+            {
+                prevRow[r, c] = -1;
+                prevCol[r, c] = -1;
+            }
+
+        Queue<Vector2Int> queue = new Queue<Vector2Int>();
+        queue.Enqueue(new Vector2Int(Row, Col));
+        visited[Row, Col] = true;
+
+        while (queue.Count > 0)
+        {
+            Vector2Int current = queue.Dequeue();
+            if (current.x == targetRow && current.y == targetCol)
+                break;
+
+            foreach (var d in Directions)
+            {
+                int nextCol = current.y + Mathf.RoundToInt(d.x);
+                int nextRow = current.x - Mathf.RoundToInt(d.y);
+
+                if (nextRow < 0 || nextCol < 0 || nextRow >= rows || nextCol >= cols)
+                    continue;
+                if (visited[nextRow, nextCol])
+                    continue;
+                if (gm.Blocked(nextRow, nextCol, true))
+                    continue;
+
+                visited[nextRow, nextCol] = true;
+                prevRow[nextRow, nextCol] = current.x;
+                prevCol[nextRow, nextCol] = current.y;
+                queue.Enqueue(new Vector2Int(nextRow, nextCol));
+            }
+        }
+
+        if (!visited[targetRow, targetCol]) return Vector2.zero;
+
+        int stepRow = targetRow;
+        int stepCol = targetCol;
+        while (prevRow[stepRow, stepCol] != Row || prevCol[stepRow, stepCol] != Col)
+        {
+            int parentRow = prevRow[stepRow, stepCol];
+            int parentCol = prevCol[stepRow, stepCol];
+            if (parentRow < 0 || parentCol < 0) return Vector2.zero;
+            stepRow = parentRow;
+            stepCol = parentCol;
+        }
+
+        return new Vector2(stepCol - Col, Row - stepRow);
     }
 
     private void GetTarget(out int tRow, out int tCol)
@@ -106,6 +187,7 @@ public class Ghost : GridMover
         {
             eaten = false;
             inHouse = true;
+            speed = gm != null && gm.Frightened ? 3f : 4.2f;
         }
     }
 

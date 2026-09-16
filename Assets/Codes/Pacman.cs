@@ -8,10 +8,19 @@ public class Pacman : GridMover
     protected override void DecideDirection()
     {
         Vector2 input = Vector2.zero;
-        if (Input.GetKey(KeyCode.UpArrow) || Input.GetKey(KeyCode.W)) input = Vector2.up;
-        else if (Input.GetKey(KeyCode.DownArrow) || Input.GetKey(KeyCode.S)) input = Vector2.down;
-        else if (Input.GetKey(KeyCode.LeftArrow) || Input.GetKey(KeyCode.A)) input = Vector2.left;
-        else if (Input.GetKey(KeyCode.RightArrow) || Input.GetKey(KeyCode.D)) input = Vector2.right;
+
+        if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.W)) input = Vector2.up;
+        else if (Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.S)) input = Vector2.down;
+        else if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A)) input = Vector2.left;
+        else if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D)) input = Vector2.right;
+
+        if (input == Vector2.zero)
+        {
+            if (Input.GetKey(KeyCode.UpArrow) || Input.GetKey(KeyCode.W)) input = Vector2.up;
+            else if (Input.GetKey(KeyCode.DownArrow) || Input.GetKey(KeyCode.S)) input = Vector2.down;
+            else if (Input.GetKey(KeyCode.LeftArrow) || Input.GetKey(KeyCode.A)) input = Vector2.left;
+            else if (Input.GetKey(KeyCode.RightArrow) || Input.GetKey(KeyCode.D)) input = Vector2.right;
+        }
 
         // 입력이 있을 때만 갱신 → 마지막 입력이 버퍼링되어 모퉁이에서 자동 회전
         if (input != Vector2.zero) nextDirection = input;
